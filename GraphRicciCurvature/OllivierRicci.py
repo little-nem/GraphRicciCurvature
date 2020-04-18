@@ -361,7 +361,7 @@ def _wrap_compute_single_edge(stuff):
 def _compute_ricci_curvature_edges(G: nx.Graph, weight="weight", edge_list=[],
                                    alpha=0.5, method="OTD",
                                    base=math.e, exp_power=2, proc=cpu_count(), chunksize=None, cache_maxsize=1000000,
-                                   shortest_path="all_pairs", nbr_topk=1000):
+                                   shortest_path="all_pairs", precomputed_distance_map = None, nbr_topk=1000):
     """Compute Ricci curvature for edges in  given edge lists.
 
     Parameters
@@ -447,10 +447,15 @@ def _compute_ricci_curvature_edges(G: nx.Graph, weight="weight", edge_list=[],
         nx2nk_ndict[n] = idx
         nk2nx_ndict[idx] = n
 
-    if _shortest_path == "all_pairs":
+    if precomputed_distance_map is not None:
+        logger.info("Using precomuted distance map")
+        _apsp = precomputed_distance_map
+    elif _shortest_path == "all_pairs":
         # Construct the all pair shortest path dictionary
         # if not _apsp:
         _apsp = _get_all_pairs_shortest_path()
+
+    logger.info("Distance map : {} \n (max : {})".format(_apsp, np.max(_apsp)))
 
     if edge_list:
         args = [(nx2nk_ndict[source], nx2nk_ndict[target]) for source, target in edge_list]
@@ -639,7 +644,7 @@ class OllivierRicci:
     def __init__(self, G: nx.Graph, weight="weight", alpha=0.5, method="OTD",
                  base=math.e, exp_power=2, proc=cpu_count(), chunksize=None, shortest_path="all_pairs",
                  cache_maxsize=1000000,
-                 nbr_topk=1000, verbose="ERROR"):
+                 nbr_topk=1000, precomputed_distance_map = None, verbose="ERROR"):
         """Initialized a container to compute Ollivier-Ricci curvature/flow.
 
         Parameters
@@ -696,6 +701,7 @@ class OllivierRicci:
         self.cache_maxsize = cache_maxsize
         self.shortest_path = shortest_path
         self.nbr_topk = nbr_topk
+        self.precomputed_distance_map = precomputed_distance_map
 
         self.set_verbose(verbose)
         self.lengths = {}  # all pair shortest path dictionary
@@ -762,7 +768,7 @@ class OllivierRicci:
                                           alpha=self.alpha, method=self.method,
                                           base=self.base, exp_power=self.exp_power,
                                           proc=self.proc, chunksize=self.chunksize, cache_maxsize=self.cache_maxsize,
-                                          shortest_path=self.shortest_path,
+                                          shortest_path=self.shortest_path, precomputed_distance_map=self.precomputed_distance_map,
                                           nbr_topk=self.nbr_topk)
         return self.G
 
